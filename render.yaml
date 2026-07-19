@@ -1,0 +1,21 @@
+# Deploys the VoiceMeet signaling server to Render.
+# The Next.js app itself goes to Vercel — Vercel cannot host Socket.IO.
+services:
+  - type: web
+    name: voicemeet-signal
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run signal
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: PORT
+        value: "3001"
+      # Your Vercel production domain(s), comma-separated.
+      - key: CORS_ORIGIN
+        sync: false
+      # Set true to also accept *.vercel.app preview deployments.
+      - key: ALLOW_VERCEL_PREVIEWS
+        value: "true"

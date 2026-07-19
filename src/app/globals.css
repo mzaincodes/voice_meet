@@ -1,26 +1,370 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* -------------------------------------------------------------------------- */
+/*                               Design tokens                                */
+/*                                                                            */
+/*  "Studio" — modelled on audio hardware rather than a web dashboard: matte   */
+/*  graphite panels, hairline seams, and a single warm amber accent that       */
+/*  behaves like an indicator lamp. Dark is the primary theme; light is a      */
+/*  warm paper counterpart rather than a plain inversion.                      */
+/* -------------------------------------------------------------------------- */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Tighter than the usual pill radius — closer to a hardware faceplate. */
+  --radius: 0.625rem;
+
+  /* Warm paper, not blue-white. */
+  --background: oklch(0.965 0.008 85);
+  --foreground: oklch(0.22 0.012 70);
+
+  --card: oklch(0.995 0.004 85);
+  --card-foreground: oklch(0.22 0.012 70);
+  --popover: oklch(0.995 0.004 85);
+  --popover-foreground: oklch(0.22 0.012 70);
+
+  /* Amber indicator lamp. */
+  --primary: oklch(0.68 0.155 55);
+  --primary-foreground: oklch(0.18 0.02 60);
+
+  --secondary: oklch(0.925 0.012 80);
+  --secondary-foreground: oklch(0.28 0.014 70);
+
+  --muted: oklch(0.925 0.012 80);
+  --muted-foreground: oklch(0.5 0.014 70);
+
+  --accent: oklch(0.9 0.018 75);
+  --accent-foreground: oklch(0.26 0.014 70);
+
+  --destructive: oklch(0.58 0.19 22);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  /* Signal green — reserved for "live" and voice activity. */
+  --success: oklch(0.62 0.15 150);
+  --warning: oklch(0.72 0.15 75);
+
+  --border: oklch(0.87 0.012 78);
+  --input: oklch(0.87 0.012 78);
+  --ring: oklch(0.68 0.155 55);
+
+  /* Panel surfaces. Opaque by design — no backdrop blur anywhere. */
+  --panel: oklch(0.995 0.004 85);
+  --panel-raised: oklch(1 0 0);
+  --panel-border: oklch(0.87 0.012 78);
+  --panel-seam: oklch(0.82 0.014 78);
+  --shadow-color: oklch(0.3 0.03 70 / 0.1);
+
+  /* Ambient warmth behind the shell. */
+  --ambient-warm: oklch(0.75 0.13 60 / 0.13);
+  --ambient-cool: oklch(0.6 0.09 200 / 0.07);
+}
+
+.dark {
+  --background: oklch(0.155 0.006 265);
+  --foreground: oklch(0.93 0.006 80);
+
+  --card: oklch(0.2 0.007 265);
+  --card-foreground: oklch(0.93 0.006 80);
+  --popover: oklch(0.22 0.008 265);
+  --popover-foreground: oklch(0.93 0.006 80);
+
+  --primary: oklch(0.78 0.145 62);
+  --primary-foreground: oklch(0.17 0.02 60);
+
+  --secondary: oklch(0.26 0.008 265);
+  --secondary-foreground: oklch(0.93 0.006 80);
+
+  --muted: oklch(0.26 0.008 265);
+  --muted-foreground: oklch(0.66 0.01 75);
+
+  --accent: oklch(0.29 0.01 265);
+  --accent-foreground: oklch(0.93 0.006 80);
+
+  --destructive: oklch(0.62 0.19 20);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --success: oklch(0.8 0.19 150);
+  --warning: oklch(0.82 0.15 80);
+
+  --border: oklch(1 0 0 / 0.09);
+  --input: oklch(1 0 0 / 0.13);
+  --ring: oklch(0.78 0.145 62);
+
+  --panel: oklch(0.2 0.007 265);
+  --panel-raised: oklch(0.235 0.008 265);
+  --panel-border: oklch(1 0 0 / 0.09);
+  --panel-seam: oklch(1 0 0 / 0.14);
+  --shadow-color: oklch(0 0 0 / 0.55);
+
+  --ambient-warm: oklch(0.72 0.15 60 / 0.1);
+  --ambient-cool: oklch(0.5 0.1 250 / 0.09);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-panel: var(--panel);
+  --color-panel-raised: var(--panel-raised);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 3px);
+  --radius-md: calc(var(--radius) - 1px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* -------------------------------------------------------------------------- */
+/*                                    Base                                    */
+/* -------------------------------------------------------------------------- */
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--primary) 32%, transparent);
+    color: var(--foreground);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* -------------------------------------------------------------------------- */
+/*                              Surfaces (matte)                              */
+/* -------------------------------------------------------------------------- */
+
+@layer utilities {
+  /*
+   * Flat panel with a hairline seam and a faint top highlight — the way light
+   * catches the edge of a brushed-metal faceplate. No blur: translucency is
+   * what made the old treatment read as generic, and it costs paint time.
+   */
+  .panel {
+    background-color: var(--panel);
+    border: 1px solid var(--panel-border);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklch, var(--panel-seam) 55%, transparent),
+      0 1px 2px var(--shadow-color);
+  }
+
+  .panel-raised {
+    background-color: var(--panel-raised);
+    border: 1px solid var(--panel-border);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklch, var(--panel-seam) 70%, transparent),
+      0 8px 24px -10px var(--shadow-color),
+      0 2px 6px -2px var(--shadow-color);
+  }
+
+  /* Floating over busy content — deeper drop, same matte fill. */
+  .panel-overlay {
+    background-color: var(--panel-raised);
+    border: 1px solid var(--panel-border);
+    box-shadow:
+      inset 0 1px 0 0 color-mix(in oklch, var(--panel-seam) 70%, transparent),
+      0 24px 60px -20px var(--shadow-color),
+      0 6px 16px -6px var(--shadow-color);
+  }
+
+  /*
+   * Ambient room light: one warm pool low and centred (where the controls sit)
+   * and a cool counterweight up high. Replaces the multi-hue blob gradient.
+   */
+  .studio-bg {
+    position: relative;
+    background-color: var(--background);
+    background-image:
+      radial-gradient(
+        ellipse 120% 70% at 50% 108%,
+        var(--ambient-warm),
+        transparent 62%
+      ),
+      radial-gradient(
+        ellipse 90% 50% at 82% -8%,
+        var(--ambient-cool),
+        transparent 60%
+      );
+    background-attachment: fixed;
+  }
+
+  /* Fine grain, so the large flat fields don't band on wide gamut displays. */
+  .studio-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .studio-bg > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Amber lamp behind the wordmark and other small emphasis marks. */
+  .lamp {
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--primary) 35%, transparent),
+      0 0 18px -4px color-mix(in oklch, var(--primary) 55%, transparent);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklch, var(--foreground) 20%, transparent)
+      transparent;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklch, var(--foreground) 20%, transparent);
+    border-radius: 9999px;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                            Voice-activity motion                           */
+/* -------------------------------------------------------------------------- */
+
+@keyframes vm-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1.75);
+    opacity: 0;
+  }
+}
+
+@keyframes vm-pulse-ring {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 0.5;
+  }
+}
+
+@keyframes vm-spin-ring {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes vm-bar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-vm-ripple {
+  animation: vm-ripple 1.8s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+
+.animate-vm-pulse-ring {
+  animation: vm-pulse-ring 1.6s ease-in-out infinite;
+}
+
+.animate-vm-spin-ring {
+  animation: vm-spin-ring 3.5s linear infinite;
+}
+
+.animate-vm-bar {
+  animation: vm-bar 0.9s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                          Accessibility preferences                         */
+/* -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Drop translucency in forced-colors / high-contrast mode so text stays legible. */
+@media (prefers-contrast: more), (forced-colors: active) {
+  .panel,
+  .panel-raised,
+  .panel-overlay {
+    background-color: var(--card);
+    border-color: var(--foreground);
+    box-shadow: none;
+  }
+
+  .studio-bg {
+    background-image: none;
+  }
+
+  .studio-bg::before {
+    display: none;
+  }
 }
