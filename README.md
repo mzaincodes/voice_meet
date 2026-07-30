@@ -123,16 +123,41 @@ Server env vars:
 
 ### 2. Next.js app on Vercel
 
-Import the repo, then set:
+Import the repo, then set this **Environment Variable** in the Vercel project
+settings (Settings → Environment Variables):
 
 ```
 NEXT_PUBLIC_SOCKET_URL=https://your-signal-server.onrender.com
 ```
 
-Deploy. That single variable is all the app needs to find the signaling server.
+Then **redeploy** — Next.js inlines `NEXT_PUBLIC_*` variables at build time, so a
+variable added after a build only takes effect on the next deploy.
+
+That single variable is all the app needs to find the signaling server.
 
 > If you're on Render's free tier, the server sleeps after inactivity and the
 > first join of the day will take ~30s to wake it. Any paid tier removes this.
+
+#### If a second person can't join ("Connecting…" forever)
+
+This is almost always one of three things, and the app now names which:
+
+1. **`NEXT_PUBLIC_SOCKET_URL` was never set** (or you forgot to redeploy after
+   setting it). The app defaults to `http://localhost:3001`, so every visitor
+   tries to reach *their own* machine — it "works" only for whoever happens to
+   be running the server locally. The join screen will now say the server is
+   still set to localhost.
+2. **The URL is `http://` on an `https://` site.** Browsers block that as mixed
+   content. Use the server's `https://` URL.
+3. **`CORS_ORIGIN` on the signaling server doesn't include your Vercel domain.**
+   The server rejects the connection and its logs show
+   `rejected handshake from origin …`. Set `CORS_ORIGIN` to your exact Vercel
+   URL (e.g. `https://voicemeet.vercel.app`), or set `ALLOW_VERCEL_PREVIEWS=true`
+   to also accept `*.vercel.app` preview deployments. Restart the server after
+   changing it.
+
+Verify the wiring quickly: open your deployed site, and in the browser console
+run `location.origin` — that exact value must be in the server's `CORS_ORIGIN`.
 
 ### 3. TURN (optional, but expect ~10–15% of users to need it)
 

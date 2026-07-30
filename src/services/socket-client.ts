@@ -6,9 +6,77 @@ import type { Ack, ClientToServerEvents, ServerToClientEvents } from "@/types";
 
 export type VoiceMeetSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ?? "http://localhost:3001";
+const RAW_SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL?.trim();
+const SOCKET_URL = RAW_SOCKET_URL && RAW_SOCKET_URL.length > 0 ? RAW_SOCKET_URL : "http://localhost:3001";
 
 const DEFAULT_ACK_TIMEOUT_MS = 10_000;
+
+export function getSocketUrl(): string {
+  return SOCKET_URL;
+}
+
+function isLocalHostname(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0" ||
+    hostname === "::1" ||
+    hostname.endsWith(".local")
+  );
+}
+
+/**
+ * Pure decision behind {@link getSocketConfigError}, split out so it can be
+ * exhaustively tested without a DOM. Returns the reason the given signaling URL
+ * cannot work from a page on `pageOrigin`, or null if it looks usable.
+ */
+export function evaluateSocketConfig(
+  socketUrl: string,
+  pageProtocol: string,
+  pageHostname: string,
+): string | null {
+  let url: URL;
+  try {
+    url = new URL(socketUrl);
+  } catch {
+    return "The signaling server address (NEXT_PUBLIC_SOCKET_URL) is not a valid URL.";
+  }
+
+  const pageIsLocal = isLocalHostname(pageHostname);
+  const serverIsLocal = isLocalHostname(url.hostname);
+
+  // A deployed page still pointing at localhost — the "works for me only" bug.
+  if (!pageIsLocal && serverIsLocal) {
+    return "This site is deployed, but its signaling server is still set to localhost, so no one else can connect. Set NEXT_PUBLIC_SOCKET_URL to your deployed signaling server's URL and redeploy.";
+  }
+
+  // An HTTPS page cannot open an insecure (ws://) socket to a remote host —
+  // the browser blocks it as mixed content before it ever leaves the page.
+  if (pageProtocol === "https:" && url.protocol === "http:" && !serverIsLocal) {
+    return "This site is served over HTTPS, but the signaling server URL is http://, which browsers block as mixed content. Use an https:// URL for NEXT_PUBLIC_SOCKET_URL.";
+  }
+
+  return null;
+}
+
+/**
+ * Returns a human-readable reason the signaling URL cannot possibly work from
+ * the current page, or null if it looks usable.
+ *
+ * This exists to catch the single most common deploy mistake: shipping the app
+ * to a real host without ever pointing `NEXT_PUBLIC_SOCKET_URL` at a deployed
+ * signaling server, which leaves every visitor trying to reach *their own*
+ * `localhost:3001`. That fails silently and looks exactly like "it works for
+ * me but not for anyone else", so we detect it and fail loudly instead.
+ */
+export function getSocketConfigError(): string | null {
+  if (typeof window === "undefined") return null;
+  return evaluateSocketConfig(
+    SOCKET_URL,
+    window.location.protocol,
+    window.location.hostname,
+  );
+}
 
 let socket: VoiceMeetSocket | null = null;
 

@@ -411,6 +411,15 @@ function ActiveRoom({ roomId, userName, mode, onExit }: ActiveRoomProps) {
 }
 
 function ConnectingScreen({ stage }: { stage: "microphone" | "connecting" }) {
+  // If connecting drags on, hint that a sleeping free-tier server may be the
+  // cause — the most common reason a correctly-deployed room is slow to open.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (stage !== "connecting") return;
+    const timer = setTimeout(() => setSlow(true), 6000);
+    return () => clearTimeout(timer);
+  }, [stage]);
+
   return (
     <div className="studio-bg flex min-h-dvh flex-col items-center justify-center gap-5 px-6 text-center">
       <div className="relative grid size-16 place-items-center">
@@ -428,6 +437,12 @@ function ConnectingScreen({ stage }: { stage: "microphone" | "connecting" }) {
             ? "Allow microphone access when your browser asks. Nothing is recorded."
             : "Setting up a direct, encrypted connection to everyone in the call."}
         </p>
+        {stage === "connecting" && slow ? (
+          <p className="mt-3 max-w-sm text-balance text-xs text-muted-foreground/80">
+            Taking longer than usual — the signaling server may be waking from
+            sleep. This can take up to half a minute on a free plan.
+          </p>
+        ) : null}
       </div>
     </div>
   );

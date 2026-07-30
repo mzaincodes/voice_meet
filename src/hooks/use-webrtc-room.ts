@@ -13,6 +13,7 @@ import {
   disconnectSocket,
   emitWithAck,
   getSocket,
+  getSocketConfigError,
   SocketAckTimeoutError,
   type VoiceMeetSocket,
 } from "@/services/socket-client";
@@ -28,6 +29,12 @@ export type JoinState = "idle" | "requesting-media" | "connecting" | "joined" | 
 
 /** How long a profanity badge stays on an avatar. */
 const WARNING_BADGE_MS = 8000;
+
+/**
+ * How long to wait for a first successful join before giving up. Long enough to
+ * absorb a free-tier signaling server waking from cold start (~30s).
+ */
+const CONNECT_TIMEOUT_MS = 35_000;
 
 const SESSION_KEY = "voicemeet:session-id";
 
@@ -177,6 +184,7 @@ export function useWebRTCRoom({
   /** Preferences the live track was actually built with. */
   const appliedAudioRef = useRef<AudioPreferences | null>(null);
   const warnTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const connectWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const teardownRef = useRef<(() => void) | null>(null);
   /**
    * StrictMode double-mounts the effect. Every async continuation checks this
@@ -229,6 +237,13 @@ export function useWebRTCRoom({
     const isCurrent = () => runIdRef.current === runId;
 
     const abort = new AbortController();
+
+    const clearConnectWatchdog = () => {
+      if (connectWatchdogRef.current === null) return;
+      clearTimeout(connectWatchdogRef.current);
+      connectWatchdogRef.current = null;
+    };
+
     const peers = new Map<string, PeerConnection>();
     const pending = new Map<string, RTCIceCandidateInit[]>();
     peersRef.current = peers;
@@ -378,6 +393,7 @@ export function useWebRTCRoom({
         }
 
         hasJoinedRef.current = true;
+        clearConnectWatchdog();
         // The server always registers a fresh participant as unmuted, so a
         // reconnect while muted would otherwise show us live to everyone else.
         if (isMutedRef.current) socket.emit("participant:mute", { isMuted: true });
@@ -576,6 +592,19 @@ export function useWebRTCRoom({
       appliedAudioRef.current = audioRef.current;
       setLocalStream(stream);
 
+      // Fail fast on a misconfigured signaling URL rather than letting the
+      // socket retry an address that can never work and hanging on "Connecting".
+      const configError = getSocketConfigError();
+      if (configError) {
+        setError(configError);
+        setJoinState("error");
+        setStatus("error");
+        for (const track of stream.getTracks()) track.stop();
+        localStreamRef.current = null;
+        setLocalStream(null);
+        return;
+      }
+
       const iceServers = await getIceServers(abort.signal);
       if (!isCurrent()) return;
       configRef.current = buildPeerConfiguration(iceServers);
@@ -584,6 +613,21 @@ export function useWebRTCRoom({
       setStatus("connecting");
       attachListeners();
       socket.connect();
+
+      // If we never reach "joined" — server down, asleep, wrong URL, blocked —
+      // surface an actionable error instead of spinning forever. Generous
+      // enough to absorb a free-tier cold start (which can take ~30s).
+      clearConnectWatchdog();
+      connectWatchdogRef.current = setTimeout(() => {
+        if (!isCurrent() || hasJoinedRef.current) return;
+        setError(
+          "Couldn't reach the signaling server. It may be starting up, asleep, or unreachable — wait a moment and try again. If you just deployed, confirm NEXT_PUBLIC_SOCKET_URL points at a running server.",
+        );
+        setJoinState("error");
+        setStatus("error");
+        closeAllPeers();
+        socket.disconnect();
+      }, CONNECT_TIMEOUT_MS);
     };
 
     void start();
@@ -596,6 +640,7 @@ export function useWebRTCRoom({
       torn = true;
 
       abort.abort();
+      clearConnectWatchdog();
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
       closeAllPeers();

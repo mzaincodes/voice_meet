@@ -11,9 +11,11 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      - key: PORT
-        value: "3001"
-      # Your Vercel production domain(s), comma-separated.
+      # NOTE: do NOT set PORT here. Render injects its own PORT and expects the
+      # service to bind to it; the server reads process.env.PORT automatically.
+      # Overriding it makes Render report "no open ports detected".
+      #
+      # Your Vercel production domain(s), comma-separated. Set in the dashboard.
       - key: CORS_ORIGIN
         sync: false
       # Set true to also accept *.vercel.app preview deployments.

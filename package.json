@@ -3,16 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n web,signal -c cyan,magenta \"npm:dev:web\" \"npm:dev:signal\"",
+    "dev": "node api.js && concurrently -n web,signal -c cyan,magenta \"npm:dev:web\" \"npm:dev:signal\"",
     "dev:web": "next dev",
     "dev:signal": "tsx watch server/index.ts",
-    "build": "next build",
-    "start": "next start",
+    "build": "node api.js && next build",
+    "start": "node api.js && next start",
     "signal": "tsx server/index.ts",
     "lint": "eslint",
     "typecheck": "tsc --noEmit && tsc --noEmit -p server/tsconfig.json",
     "test:signal": "node tests/signaling.e2e.mjs",
-    "test:browser": "node tests/browser.e2e.mjs"
+    "test:browser": "node tests/browser.e2e.mjs",
+    "test:config": "node tests/socket-config.test.mjs"
   },
   "dependencies": {
     "@radix-ui/react-alert-dialog": "^1.1.4",
